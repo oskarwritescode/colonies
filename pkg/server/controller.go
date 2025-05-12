@@ -7,6 +7,15 @@ import (
 	"github.com/colonyos/colonies/pkg/core"
 )
 
+type graphs interface {
+	findSuccessfulProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
+	updateProcessGraph(graph *core.ProcessGraph) error
+	findFailedProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
+	findWaitingProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
+	findRunningProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
+	getProcessGraphByID(processGraphID string) (*core.ProcessGraph, error)
+}
+
 type controller interface {
 	getCronPeriod() int
 	getGeneratorPeriod() int
@@ -27,14 +36,8 @@ type controller interface {
 	addChild(processGraphID string, parentProcessID string, childProcessID string, process *core.Process, executorID string, insert bool) (*core.Process, error)
 	getProcess(processID string) (*core.Process, error)
 	findProcessHistory(colonyName string, executorID string, seconds int, state int) ([]*core.Process, error)
-	updateProcessGraph(graph *core.ProcessGraph) error
 	createProcessGraph(workflowSpec *core.WorkflowSpec, args []interface{}, kwargs map[string]interface{}, rootInput []interface{}, recoveredID string) (*core.ProcessGraph, error)
 	submitWorkflowSpec(workflowSpec *core.WorkflowSpec, recoveredID string) (*core.ProcessGraph, error)
-	getProcessGraphByID(processGraphID string) (*core.ProcessGraph, error)
-	findWaitingProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
-	findRunningProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
-	findSuccessfulProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
-	findFailedProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error)
 	removeProcess(processID string) error
 	removeAllProcesses(colonyName string, state int) error
 	removeProcessGraph(processID string) error

@@ -59,7 +59,7 @@ func (server *ColoniesServer) handleGetProcessGraphHTTPRequest(c *gin.Context, r
 		return
 	}
 
-	graph, err := server.controller.getProcessGraphByID(msg.ProcessGraphID)
+	graph, err := server.graphs.getProcessGraphByID(msg.ProcessGraphID)
 	if server.handleHTTPError(c, err, http.StatusBadRequest) {
 		return
 	}
@@ -105,7 +105,7 @@ func (server *ColoniesServer) handleGetProcessGraphsHTTPRequest(c *gin.Context, 
 
 	switch msg.State {
 	case core.WAITING:
-		graphs, err := server.controller.findWaitingProcessGraphs(msg.ColonyName, msg.Count)
+		graphs, err := server.graphs.findWaitingProcessGraphs(msg.ColonyName, msg.Count)
 		if server.handleHTTPError(c, err, http.StatusBadRequest) {
 			return
 		}
@@ -115,7 +115,7 @@ func (server *ColoniesServer) handleGetProcessGraphsHTTPRequest(c *gin.Context, 
 		}
 		server.sendHTTPReply(c, payloadType, jsonString)
 	case core.RUNNING:
-		graphs, err := server.controller.findRunningProcessGraphs(msg.ColonyName, msg.Count)
+		graphs, err := server.graphs.findRunningProcessGraphs(msg.ColonyName, msg.Count)
 		if server.handleHTTPError(c, err, http.StatusBadRequest) {
 			return
 		}
@@ -125,7 +125,7 @@ func (server *ColoniesServer) handleGetProcessGraphsHTTPRequest(c *gin.Context, 
 		}
 		server.sendHTTPReply(c, payloadType, jsonString)
 	case core.SUCCESS:
-		graphs, err := server.controller.findSuccessfulProcessGraphs(msg.ColonyName, msg.Count)
+		graphs, err := server.graphs.findSuccessfulProcessGraphs(msg.ColonyName, msg.Count)
 		if server.handleHTTPError(c, err, http.StatusBadRequest) {
 			return
 		}
@@ -135,7 +135,7 @@ func (server *ColoniesServer) handleGetProcessGraphsHTTPRequest(c *gin.Context, 
 		}
 		server.sendHTTPReply(c, payloadType, jsonString)
 	case core.FAILED:
-		graphs, err := server.controller.findFailedProcessGraphs(msg.ColonyName, msg.Count)
+		graphs, err := server.graphs.findFailedProcessGraphs(msg.ColonyName, msg.Count)
 		if server.handleHTTPError(c, err, http.StatusBadRequest) {
 			return
 		}
@@ -164,7 +164,7 @@ func (server *ColoniesServer) handleRemoveProcessGraphHTTPRequest(c *gin.Context
 		return
 	}
 
-	graph, err := server.controller.getProcessGraphByID(msg.ProcessGraphID)
+	graph, err := server.graphs.getProcessGraphByID(msg.ProcessGraphID)
 	if server.handleHTTPError(c, err, http.StatusBadRequest) {
 		return
 	}

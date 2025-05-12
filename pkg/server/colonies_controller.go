@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 
@@ -63,6 +62,11 @@ type coloniesController struct {
 	retention        bool
 	retentionPolicy  int64
 	retentionPeriod  int
+}
+
+type coloniesGraphs struct {
+	db       database.Database
+	cmdQueue chan *command
 }
 
 func createColoniesController(db database.Database,
@@ -537,11 +541,6 @@ func (controller *coloniesController) findProcessHistory(colonyName string, exec
 	}
 }
 
-func (controller *coloniesController) updateProcessGraph(graph *core.ProcessGraph) error {
-	graph.SetStorage(controller.db)
-	return graph.UpdateProcessIDs()
-}
-
 func (controller *coloniesController) createProcessGraph(workflowSpec *core.WorkflowSpec, args []interface{}, kwargs map[string]interface{}, rootInput []interface{}, recoveredID string) (*core.ProcessGraph, error) {
 	processgraph, err := core.CreateProcessGraph(workflowSpec.ColonyName)
 	if err != nil {
@@ -683,170 +682,6 @@ func (controller *coloniesController) submitWorkflowSpec(workflowSpec *core.Work
 		return nil, err
 	case processGraph := <-cmd.processGraphReplyChan:
 		return processGraph, nil
-	}
-}
-
-func (controller *coloniesController) getProcessGraphByID(processGraphID string) (*core.ProcessGraph, error) {
-	cmd := &command{threaded: true, processGraphReplyChan: make(chan *core.ProcessGraph, 1),
-		errorChan: make(chan error, 1),
-		handler: func(cmd *command) {
-			graph, err := controller.db.GetProcessGraphByID(processGraphID)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-			if graph == nil {
-				cmd.processGraphReplyChan <- nil
-				return
-			}
-			err = controller.updateProcessGraph(graph)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-
-			cmd.processGraphReplyChan <- graph
-		}}
-
-	controller.cmdQueue <- cmd
-	select {
-	case err := <-cmd.errorChan:
-		return nil, err
-	case graph := <-cmd.processGraphReplyChan:
-		return graph, nil
-	}
-}
-
-func (controller *coloniesController) findWaitingProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error) {
-	cmd := &command{threaded: true, processGraphsReplyChan: make(chan []*core.ProcessGraph),
-		errorChan: make(chan error, 1),
-		handler: func(cmd *command) {
-			if count > MAX_COUNT {
-				cmd.errorChan <- errors.New("Count is larger than MaxCount limit <" + strconv.Itoa(MAX_COUNT) + ">")
-				return
-			}
-			graphs, err := controller.db.FindWaitingProcessGraphs(colonyName, count)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-			for _, graph := range graphs {
-				err = controller.updateProcessGraph(graph)
-				if err != nil {
-					cmd.errorChan <- err
-					return
-				}
-			}
-
-			cmd.processGraphsReplyChan <- graphs
-		}}
-
-	controller.cmdQueue <- cmd
-	var graphs []*core.ProcessGraph
-	select {
-	case err := <-cmd.errorChan:
-		return graphs, err
-	case graphs := <-cmd.processGraphsReplyChan:
-		return graphs, nil
-	}
-}
-
-func (controller *coloniesController) findRunningProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error) {
-	cmd := &command{threaded: true, processGraphsReplyChan: make(chan []*core.ProcessGraph),
-		errorChan: make(chan error, 1),
-		handler: func(cmd *command) {
-			if count > MAX_COUNT {
-				cmd.errorChan <- errors.New("Count is larger than MaxCount limit <" + strconv.Itoa(MAX_COUNT) + ">")
-				return
-			}
-			graphs, err := controller.db.FindRunningProcessGraphs(colonyName, count)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-			for _, graph := range graphs {
-				err = controller.updateProcessGraph(graph)
-				if err != nil {
-					cmd.errorChan <- err
-					return
-				}
-			}
-			cmd.processGraphsReplyChan <- graphs
-		}}
-
-	controller.cmdQueue <- cmd
-	var graphs []*core.ProcessGraph
-	select {
-	case err := <-cmd.errorChan:
-		return graphs, err
-	case graphs := <-cmd.processGraphsReplyChan:
-		return graphs, nil
-	}
-}
-
-func (controller *coloniesController) findSuccessfulProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error) {
-	cmd := &command{threaded: true, processGraphsReplyChan: make(chan []*core.ProcessGraph),
-		errorChan: make(chan error, 1),
-		handler: func(cmd *command) {
-			if count > MAX_COUNT {
-				cmd.errorChan <- errors.New("Count is larger than MaxCount limit <" + strconv.Itoa(MAX_COUNT) + ">")
-				return
-			}
-			graphs, err := controller.db.FindSuccessfulProcessGraphs(colonyName, count)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-			for _, graph := range graphs {
-				err = controller.updateProcessGraph(graph)
-				if err != nil {
-					cmd.errorChan <- err
-					return
-				}
-			}
-			cmd.processGraphsReplyChan <- graphs
-		}}
-
-	controller.cmdQueue <- cmd
-	var graphs []*core.ProcessGraph
-	select {
-	case err := <-cmd.errorChan:
-		return graphs, err
-	case graphs := <-cmd.processGraphsReplyChan:
-		return graphs, nil
-	}
-}
-
-func (controller *coloniesController) findFailedProcessGraphs(colonyName string, count int) ([]*core.ProcessGraph, error) {
-	cmd := &command{threaded: true, processGraphsReplyChan: make(chan []*core.ProcessGraph),
-		errorChan: make(chan error, 1),
-		handler: func(cmd *command) {
-			if count > MAX_COUNT {
-				cmd.errorChan <- errors.New("Count is larger than MaxCount limit <" + strconv.Itoa(MAX_COUNT) + ">")
-				return
-			}
-			graphs, err := controller.db.FindFailedProcessGraphs(colonyName, count)
-			if err != nil {
-				cmd.errorChan <- err
-				return
-			}
-			for _, graph := range graphs {
-				err = controller.updateProcessGraph(graph)
-				if err != nil {
-					cmd.errorChan <- err
-					return
-				}
-			}
-			cmd.processGraphsReplyChan <- graphs
-		}}
-
-	controller.cmdQueue <- cmd
-	var graphs []*core.ProcessGraph
-	select {
-	case err := <-cmd.errorChan:
-		return graphs, err
-	case graphs := <-cmd.processGraphsReplyChan:
-		return graphs, nil
 	}
 }
 

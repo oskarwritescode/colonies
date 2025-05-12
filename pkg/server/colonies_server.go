@@ -39,6 +39,7 @@ type ColoniesServer struct {
 	retention               bool
 	retentionPolicy         int64
 	retentionPeriod         int
+	graphs                  *coloniesGraphs
 }
 
 func CreateColoniesServer(db database.Database,
@@ -68,7 +69,13 @@ func CreateColoniesServer(db database.Database,
 	}
 
 	server.httpServer = httpServer
-	server.controller = createColoniesController(db, thisNode, clusterConfig, etcdDataPath, generatorPeriod, cronPeriod, retention, retentionPolicy, retentionPeriod)
+	controller := createColoniesController(db, thisNode, clusterConfig, etcdDataPath, generatorPeriod, cronPeriod, retention, retentionPolicy, retentionPeriod)
+
+	server.controller = controller
+	server.graphs = &coloniesGraphs{
+		db:       db,
+		cmdQueue: controller.cmdQueue,
+	}
 
 	server.tls = tls
 	server.port = port
